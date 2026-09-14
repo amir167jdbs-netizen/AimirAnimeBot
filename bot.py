@@ -4,7 +4,8 @@ import random
 import os
 from datetime import datetime
 from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
+from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters, CallbackContext
+import asyncio
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -46,8 +47,14 @@ class Database:
     
     def load(self):
         if os.path.exists(self.filename):
-            with open(self.filename, 'r', encoding='utf-8') as f:
-                return json.load(f)
+            try:
+                with open(self.filename, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except:
+                return self.default_data()
+        return self.default_data()
+    
+    def default_data(self):
         return {
             "users": {},
             "current_character": None,
@@ -204,7 +211,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(help_text)
 
-async def spawn_character(context: ContextTypes.DEFAULT_TYPE):
+async def spawn_character(context: CallbackContext):
     character = random.choice(ANIME_CHARACTERS)
     db.set_current_character(character)
     
@@ -224,6 +231,9 @@ async def spawn_character(context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.chat.id != GROUP_ID:
+        return
+    
+    if update.message.text.startswith('/'):
         return
     
     current_character = db.get_current_character()
@@ -269,8 +279,8 @@ def main():
     
     app.job_queue.run_repeating(spawn_character, interval=SPAWN_INTERVAL, first=10)
     
-    logger.info("Bot started successfully!")
-    app.run_polling()
+    logger.info("✅ Bot is running successfully!")
+    app.run_polling(allowed_updates=["message", "callback_query"])
 
 if __name__ == '__main__':
     main()
