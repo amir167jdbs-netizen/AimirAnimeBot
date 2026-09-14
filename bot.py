@@ -3,9 +3,9 @@ import json
 import random
 import os
 from datetime import datetime, timedelta
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters, CallbackQueryHandler
-from telegram.error import TelegramError
+from telegram import Update
+from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
+import asyncio
 
 # Set up logging
 logging.basicConfig(
@@ -21,26 +21,26 @@ SPAWN_INTERVAL = 30 * 60  # 30 minutes in seconds
 
 # Anime characters database
 ANIME_CHARACTERS = [
-    {"name": "Naruto Uzumaki", "anime": "Naruto", "image": "https://i.pinimg.com/originals/f5/e5/a7/f5e5a774f5e5a774f5e5a774.jpg"},
-    {"name": "Sasuke Uchiha", "anime": "Naruto", "image": "https://i.pinimg.com/originals/5c/5c/5c/5c5c5c5c5c5c5c.jpg"},
-    {"name": "Luffy", "anime": "One Piece", "image": "https://i.pinimg.com/originals/luffy/luffy.jpg"},
-    {"name": "Zoro", "anime": "One Piece", "image": "https://i.pinimg.com/originals/zoro/zoro.jpg"},
-    {"name": "Nami", "anime": "One Piece", "image": "https://i.pinimg.com/originals/nami/nami.jpg"},
-    {"name": "Sanji", "anime": "One Piece", "image": "https://i.pinimg.com/originals/sanji/sanji.jpg"},
-    {"name": "Ichigo Kurosaki", "anime": "Bleach", "image": "https://i.pinimg.com/originals/ichigo/ichigo.jpg"},
-    {"name": "Rukia Kuchiki", "anime": "Bleach", "image": "https://i.pinimg.com/originals/rukia/rukia.jpg"},
-    {"name": "Tanjiro Kamado", "anime": "Demon Slayer", "image": "https://i.pinimg.com/originals/tanjiro/tanjiro.jpg"},
-    {"name": "Nezuko Kamado", "anime": "Demon Slayer", "image": "https://i.pinimg.com/originals/nezuko/nezuko.jpg"},
-    {"name": "Deku", "anime": "My Hero Academia", "image": "https://i.pinimg.com/originals/deku/deku.jpg"},
-    {"name": "Bakugo", "anime": "My Hero Academia", "image": "https://i.pinimg.com/originals/bakugo/bakugo.jpg"},
-    {"name": "Todoroki", "anime": "My Hero Academia", "image": "https://i.pinimg.com/originals/todoroki/todoroki.jpg"},
-    {"name": "Goku", "anime": "Dragon Ball Z", "image": "https://i.pinimg.com/originals/goku/goku.jpg"},
-    {"name": "Vegeta", "anime": "Dragon Ball Z", "image": "https://i.pinimg.com/originals/vegeta/vegeta.jpg"},
-    {"name": "Saitama", "anime": "One Punch Man", "image": "https://i.pinimg.com/originals/saitama/saitama.jpg"},
-    {"name": "Genos", "anime": "One Punch Man", "image": "https://i.pinimg.com/originals/genos/genos.jpg"},
-    {"name": "Eren Yeager", "anime": "Attack on Titan", "image": "https://i.pinimg.com/originals/eren/eren.jpg"},
-    {"name": "Mikasa Ackerman", "anime": "Attack on Titan", "image": "https://i.pinimg.com/originals/mikasa/mikasa.jpg"},
-    {"name": "Levi Ackerman", "anime": "Attack on Titan", "image": "https://i.pinimg.com/originals/levi/levi.jpg"},
+    {"name": "Naruto Uzumaki", "anime": "Naruto", "emoji": "🍜"},
+    {"name": "Sasuke Uchiha", "anime": "Naruto", "emoji": "⚫"},
+    {"name": "Luffy", "anime": "One Piece", "emoji": "🧢"},
+    {"name": "Zoro", "anime": "One Piece", "emoji": "⚔️"},
+    {"name": "Nami", "anime": "One Piece", "emoji": "🧭"},
+    {"name": "Sanji", "anime": "One Piece", "emoji": "🚬"},
+    {"name": "Ichigo Kurosaki", "anime": "Bleach", "emoji": "💀"},
+    {"name": "Rukia Kuchiki", "anime": "Bleach", "emoji": "❄️"},
+    {"name": "Tanjiro Kamado", "anime": "Demon Slayer", "emoji": "🔥"},
+    {"name": "Nezuko Kamado", "anime": "Demon Slayer", "emoji": "👹"},
+    {"name": "Deku", "anime": "My Hero Academia", "emoji": "💚"},
+    {"name": "Bakugo", "anime": "My Hero Academia", "emoji": "💥"},
+    {"name": "Todoroki", "anime": "My Hero Academia", "emoji": "❄️🔥"},
+    {"name": "Goku", "anime": "Dragon Ball Z", "emoji": "🔴"},
+    {"name": "Vegeta", "anime": "Dragon Ball Z", "emoji": "👑"},
+    {"name": "Saitama", "anime": "One Punch Man", "emoji": "🦸"},
+    {"name": "Genos", "anime": "One Punch Man", "emoji": "🤖"},
+    {"name": "Eren Yeager", "anime": "Attack on Titan", "emoji": "⛓️"},
+    {"name": "Mikasa Ackerman", "anime": "Attack on Titan", "emoji": "⚔️"},
+    {"name": "Levi Ackerman", "anime": "Attack on Titan", "emoji": "💼"},
 ]
 
 # ============== DATABASE ==============
@@ -126,7 +126,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user["username"] = update.effective_user.username or update.effective_user.first_name
     db.save()
     
-    welcome_text = f"""
+    welcome_text = """
 🎮 **خوش آمدید به AimirAnimeBot!** 🎮
 
 این یک بازی جذاب انیمه‌ای است!
@@ -222,16 +222,16 @@ async def spawn_character(context: ContextTypes.DEFAULT_TYPE):
     db.set_current_character(character)
     
     message_text = f"""
-🎬 **شخصیت جدید spawn شد!**
+{character['emoji']} **شخصیت جدید spawn شد!** {character['emoji']}
 
-از کدام انیمه است؟
+🎬 از کدام انیمه است؟
+📝 نام شخصیت را بگو!
 """
     
     try:
-        await context.bot.send_photo(
+        await context.bot.send_message(
             chat_id=GROUP_ID,
-            photo=character["image"],
-            caption=message_text,
+            text=message_text,
             parse_mode='Markdown'
         )
     except Exception as e:
@@ -263,22 +263,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user = db.get_user(user_id)
         
         reward_text = f"""
-✅ **تبریک {username}!**
+✅ **تبریک {username}!** ✅
 
 🎁 شخصیت: {current_character['name']}
 🎬 انیمه: {current_character['anime']}
 
-💰 +50 Coins
-⭐ +35 XP
+💰 +50 Coins (Total: {user['coins']})
+⭐ +35 XP (Total: {user['xp']}/100)
 🎖️ Level: {user['level']}/30
 """
         await update.message.reply_text(reward_text, parse_mode='Markdown')
         db.clear_current_character()
-    else:
-        await update.message.reply_text("❌ نام اشتباه است! دوباره تلاش کنید.")
 
 # ============== MAIN ==============
-def main():
+async def main():
     app = Application.builder().token(BOT_TOKEN).build()
     
     # Add handlers
@@ -292,8 +290,20 @@ def main():
     # Set up spawn job
     app.job_queue.run_repeating(spawn_character, interval=SPAWN_INTERVAL, first=10)
     
-    logger.info("Bot started!")
-    app.run_polling()
+    logger.info("✅ Bot started successfully!")
+    
+    await app.initialize()
+    await app.start()
+    await app.updater.start_polling()
+    
+    logger.info("🚀 Bot is running...")
+    
+    try:
+        await asyncio.Event().wait()
+    except KeyboardInterrupt:
+        logger.info("Bot stopped")
+    finally:
+        await app.stop()
 
 if __name__ == '__main__':
-    main()
+    asyncio.run(main())
