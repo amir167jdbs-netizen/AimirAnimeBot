@@ -2,48 +2,43 @@ import logging
 import json
 import random
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
-import asyncio
 
-# Set up logging
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
 
-# ============== CONFIG ==============
 BOT_TOKEN = "8592051460:AAFsgIBemMykOZonfhgKG6Sb7UyVOGvlgMM"
 GROUP_ID = -1007958087186
-SPAWN_INTERVAL = 30 * 60  # 30 minutes in seconds
+SPAWN_INTERVAL = 30 * 60
 
-# Anime characters database
 ANIME_CHARACTERS = [
-    {"name": "Naruto Uzumaki", "anime": "Naruto", "emoji": "🍜"},
-    {"name": "Sasuke Uchiha", "anime": "Naruto", "emoji": "⚫"},
-    {"name": "Luffy", "anime": "One Piece", "emoji": "🧢"},
-    {"name": "Zoro", "anime": "One Piece", "emoji": "⚔️"},
-    {"name": "Nami", "anime": "One Piece", "emoji": "🧭"},
-    {"name": "Sanji", "anime": "One Piece", "emoji": "🚬"},
-    {"name": "Ichigo Kurosaki", "anime": "Bleach", "emoji": "💀"},
-    {"name": "Rukia Kuchiki", "anime": "Bleach", "emoji": "❄️"},
-    {"name": "Tanjiro Kamado", "anime": "Demon Slayer", "emoji": "🔥"},
-    {"name": "Nezuko Kamado", "anime": "Demon Slayer", "emoji": "👹"},
-    {"name": "Deku", "anime": "My Hero Academia", "emoji": "💚"},
-    {"name": "Bakugo", "anime": "My Hero Academia", "emoji": "💥"},
-    {"name": "Todoroki", "anime": "My Hero Academia", "emoji": "❄️🔥"},
-    {"name": "Goku", "anime": "Dragon Ball Z", "emoji": "🔴"},
-    {"name": "Vegeta", "anime": "Dragon Ball Z", "emoji": "👑"},
-    {"name": "Saitama", "anime": "One Punch Man", "emoji": "🦸"},
-    {"name": "Genos", "anime": "One Punch Man", "emoji": "🤖"},
-    {"name": "Eren Yeager", "anime": "Attack on Titan", "emoji": "⛓️"},
-    {"name": "Mikasa Ackerman", "anime": "Attack on Titan", "emoji": "⚔️"},
-    {"name": "Levi Ackerman", "anime": "Attack on Titan", "emoji": "💼"},
+    {"name": "Naruto Uzumaki", "anime": "Naruto"},
+    {"name": "Sasuke Uchiha", "anime": "Naruto"},
+    {"name": "Luffy", "anime": "One Piece"},
+    {"name": "Zoro", "anime": "One Piece"},
+    {"name": "Nami", "anime": "One Piece"},
+    {"name": "Sanji", "anime": "One Piece"},
+    {"name": "Ichigo Kurosaki", "anime": "Bleach"},
+    {"name": "Rukia Kuchiki", "anime": "Bleach"},
+    {"name": "Tanjiro Kamado", "anime": "Demon Slayer"},
+    {"name": "Nezuko Kamado", "anime": "Demon Slayer"},
+    {"name": "Deku", "anime": "My Hero Academia"},
+    {"name": "Bakugo", "anime": "My Hero Academia"},
+    {"name": "Todoroki", "anime": "My Hero Academia"},
+    {"name": "Goku", "anime": "Dragon Ball Z"},
+    {"name": "Vegeta", "anime": "Dragon Ball Z"},
+    {"name": "Saitama", "anime": "One Punch Man"},
+    {"name": "Genos", "anime": "One Punch Man"},
+    {"name": "Eren Yeager", "anime": "Attack on Titan"},
+    {"name": "Mikasa Ackerman", "anime": "Attack on Titan"},
+    {"name": "Levi Ackerman", "anime": "Attack on Titan"},
 ]
 
-# ============== DATABASE ==============
 class Database:
     def __init__(self, filename="data.json"):
         self.filename = filename
@@ -94,7 +89,6 @@ class Database:
         user = self.get_user(user_id)
         user["xp"] += amount
         
-        # Level up logic: 100 XP per level, max level 30
         while user["xp"] >= 100 and user["level"] < 30:
             user["xp"] -= 100
             user["level"] += 1
@@ -120,45 +114,40 @@ class Database:
 
 db = Database()
 
-# ============== COMMANDS ==============
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = db.get_user(update.effective_user.id)
     user["username"] = update.effective_user.username or update.effective_user.first_name
     db.save()
     
-    welcome_text = """
-🎮 **خوش آمدید به AimirAnimeBot!** 🎮
+    welcome_text = """🎮 خوش آمدید به AimirAnimeBot! 🎮
 
-این یک بازی جذاب انیمه‌ای است!
-
-📋 **چطور کار می‌کند:**
+📋 چطور کار می‌کند:
 • هر 30 دقیقه یک شخصیت انیمه spawn می‌شود
 • اول کسی که نام صحیح را بگوید، شخصیت را می‌گیرد
 • هر گرفتن: 50 💰 + 35 ⭐
 
-🎯 **دستورات:**
+🎯 دستورات:
 /stats - آمار شخصی
 /collection - کالکشن شما
 /top - جدول رتبه‌بندی
 /help - راهنما
 
-بازی رو شروع کنید! 🚀
-"""
-    await update.message.reply_text(welcome_text, parse_mode='Markdown')
+بازی رو شروع کنید! 🚀"""
+    
+    await update.message.reply_text(welcome_text)
 
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = db.get_user(update.effective_user.id)
     
-    stats_text = f"""
-📊 **آمار شما:**
+    stats_text = f"""📊 آمار شما:
 
 👤 نام: {user['username']}
 💰 Coins: {user['coins']}
 ⭐ XP: {user['xp']}/100
 🎖️ Level: {user['level']}/30
-🎁 کالکشن: {len(user['collection'])} شخصیت
-"""
-    await update.message.reply_text(stats_text, parse_mode='Markdown')
+🎁 کالکشن: {len(user['collection'])} شخصیت"""
+    
+    await update.message.reply_text(stats_text)
 
 async def collection(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = db.get_user(update.effective_user.id)
@@ -167,11 +156,11 @@ async def collection(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("📭 هنوز شخصیتی را نگرفته‌اید!")
         return
     
-    collection_text = "🎁 **کالکشن شما:**\n\n"
+    collection_text = "🎁 کالکشن شما:\n\n"
     for i, char in enumerate(user["collection"], 1):
         collection_text += f"{i}. {char['name']} - {char['anime']}\n"
     
-    await update.message.reply_text(collection_text, parse_mode='Markdown')
+    await update.message.reply_text(collection_text)
 
 async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
     top_users = db.get_leaderboard(10)
@@ -180,64 +169,59 @@ async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("🏆 هنوز کسی بازی نکرده!")
         return
     
-    leaderboard_text = "🏆 **جدول رتبه‌بندی:**\n\n"
+    leaderboard_text = "🏆 جدول رتبه‌بندی:\n\n"
     for i, (user_id, user_data) in enumerate(top_users, 1):
         leaderboard_text += f"{i}. {user_data['username']} - Level {user_data['level']} | Coins: {user_data['coins']}\n"
     
-    await update.message.reply_text(leaderboard_text, parse_mode='Markdown')
+    await update.message.reply_text(leaderboard_text)
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    help_text = """
-❓ **راهنمای بازی:**
+    help_text = """❓ راهنمای بازی:
 
-🎮 **چطور شخصیت بگیرم؟**
+🎮 چطور شخصیت بگیرم؟
 هر 30 دقیقه یک شخصیت انیمه به گروپ فرستاده می‌شود.
 شما باید اول نام صحیح را پیام دهید!
 
-💰 **جوایز:**
+💰 جوایز:
 هر شخصیت: 50 Coins + 35 XP
 
-📊 **سیستم Level:**
+📊 سیستم Level:
 100 XP = 1 Level
 حداکثر Level: 30
 
-🎁 **دستورات:**
+🎁 دستورات:
 /stats - آمار شخصی
 /collection - کالکشن
 /top - رتبه‌بندی
 /help - این راهنما
 
-🎯 **نکات مهم:**
+🎯 نکات مهم:
 • تنها اول کسی که بگوید، شخصیت می‌گیرد
 • اسم باید دقیق باشد
 • هرچه بیشتر بازی کنی، بیشتر reward می‌گیری
 
-خیلی سریع باشید! ⚡
-"""
-    await update.message.reply_text(help_text, parse_mode='Markdown')
+خیلی سریع باشید! ⚡"""
+    
+    await update.message.reply_text(help_text)
 
-# ============== SPAWN SYSTEM ==============
 async def spawn_character(context: ContextTypes.DEFAULT_TYPE):
     character = random.choice(ANIME_CHARACTERS)
     db.set_current_character(character)
     
-    message_text = f"""
-{character['emoji']} **شخصیت جدید spawn شد!** {character['emoji']}
+    message_text = f"""🎬 شخصیت جدید spawn شد!
 
-🎬 از کدام انیمه است؟
-📝 نام شخصیت را بگو!
-"""
+کدام شخصیت است؟
+نام را بنویس!"""
     
     try:
         await context.bot.send_message(
             chat_id=GROUP_ID,
-            text=message_text,
-            parse_mode='Markdown'
+            text=message_text
         )
+        logger.info(f"Character spawned: {character['name']}")
     except Exception as e:
         logger.error(f"Error spawning character: {e}")
 
-# ============== MESSAGE HANDLER ==============
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.chat.id != GROUP_ID:
         return
@@ -253,7 +237,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_id = update.effective_user.id
         username = update.effective_user.username or update.effective_user.first_name
         
-        # Update user data
         db.add_character(user_id, current_character["name"], current_character["anime"])
         db.add_coins(user_id, 50)
         db.add_xp(user_id, 35)
@@ -262,24 +245,21 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         user = db.get_user(user_id)
         
-        reward_text = f"""
-✅ **تبریک {username}!** ✅
+        reward_text = f"""✅ تبریک {username}! ✅
 
 🎁 شخصیت: {current_character['name']}
 🎬 انیمه: {current_character['anime']}
 
-💰 +50 Coins (Total: {user['coins']})
-⭐ +35 XP (Total: {user['xp']}/100)
-🎖️ Level: {user['level']}/30
-"""
-        await update.message.reply_text(reward_text, parse_mode='Markdown')
+💰 +50 Coins (کل: {user['coins']})
+⭐ +35 XP (کل: {user['xp']}/100)
+🎖️ Level: {user['level']}/30"""
+        
+        await update.message.reply_text(reward_text)
         db.clear_current_character()
 
-# ============== MAIN ==============
-async def main():
+def main():
     app = Application.builder().token(BOT_TOKEN).build()
     
-    # Add handlers
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("stats", stats))
     app.add_handler(CommandHandler("collection", collection))
@@ -287,23 +267,10 @@ async def main():
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
-    # Set up spawn job
     app.job_queue.run_repeating(spawn_character, interval=SPAWN_INTERVAL, first=10)
     
-    logger.info("✅ Bot started successfully!")
-    
-    await app.initialize()
-    await app.start()
-    await app.updater.start_polling()
-    
-    logger.info("🚀 Bot is running...")
-    
-    try:
-        await asyncio.Event().wait()
-    except KeyboardInterrupt:
-        logger.info("Bot stopped")
-    finally:
-        await app.stop()
+    logger.info("Bot started successfully!")
+    app.run_polling()
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    main()
